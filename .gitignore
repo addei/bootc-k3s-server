@@ -5,3 +5,4 @@ image-build.log
 manifest-qcow2.json
 qcow2/disk.qcow2
 auth.json
+.DS_Store
