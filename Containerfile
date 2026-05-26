@@ -1,4 +1,4 @@
-FROM quay.io/centos-bootc/centos-bootc:stream10 AS base
+FROM quay.io/fedora/fedora-bootc:44 AS base
 
 # Remove RHUI packages if present
 RUN dnf remove -y subscription-manager
@@ -87,5 +87,6 @@ COPY 70-dhcpcd.conf /usr/lib/sysusers.d/70-dhcpcd.conf
 # Clean image
 RUN dnf clean all
 RUN systemd-tmpfiles --clean
-RUN find /var/cache /var/lib/dnf /var/lib/rhsm /var/log /var/roothome/buildinfo -type f -print -delete
+RUN rm -rf /run/cloud-init /run/cockpit /run/dnf /run/selinux-policy /run/setroubleshoot
+RUN find /var/cache /var/lib/dnf /var/lib/rhsm /var/log /var/roothome/buildinfo -type f -print -delete 2>/dev/null || true
 RUN bootc container lint --no-truncate
