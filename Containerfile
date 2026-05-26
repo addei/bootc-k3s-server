@@ -4,7 +4,7 @@ FROM quay.io/fedora/fedora-bootc:44 AS base
 RUN dnf remove -y subscription-manager
 
 # Install base packages
-RUN dnf install cloud-init qemu-guest-agent \
+RUN dnf install qemu-guest-agent \
     container-selinux cockpit-system cockpit-ws cockpit-files cockpit-networkmanager cockpit-ostree cockpit-selinux cockpit-storaged cockpit-podman \
     nfs-utils libnfsidmap sssd-nfs-idmap \
     -y
@@ -18,16 +18,20 @@ RUN systemctl enable podman-auto-update.timer
 # Enable Cockpit
 RUN systemctl enable cockpit.socket
 
-# Disable rpm-ostree-countme.timer and rpm-ostree-countme.service
-RUN systemctl disable rpm-ostree-countme.timer
-RUN systemctl disable rpm-ostree-countme.service
+# Mask rpm-ostree-countme.timer and rpm-ostree-countme.service
+RUN systemctl mask rpm-ostree-countme.timer
+RUN systemctl mask rpm-ostree-countme.service
+
+# Configure serial console baud rate for proper getty operation
+COPY serial-console.conf /usr/lib/bootc/kargs.d/serial-console.conf
+
+# Increase inotify limits for k3s with many pods
+COPY 90-inotify.conf /etc/sysctl.d/90-inotify.conf
 
 # Lint the containerfile
 RUN bootc container lint
 
 FROM base AS k3s-server
-
-COPY rancher-k3s-common.repo /etc/yum.repos.d/rancher-k3s-common.repo
 
 # Clean up DNF cache to reduce image size
 RUN dnf clean all
@@ -68,8 +72,8 @@ ENV INSTALL_K3S_SKIP_DOWNLOAD=${INSTALL_K3S_SKIP_DOWNLOAD} \
     INSTALL_K3S_CHANNEL=${INSTALL_K3S_CHANNEL} \
     K3S_SELINUX=${K3S_SELINUX}
 
-# Set SElinux permissive, as k3s does not support EL10 distroes with SELinux
-RUN sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+# Set SELinux permissive for now until k3s-selinux is confirmed working
+# RUN sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
 
 # Pass the predefined K3S Token as a secret from CICD Variables
 RUN --mount=type=secret,id=K3S_TOKEN K3S_TOKEN=$(cat /run/secrets/K3S_TOKEN) curl -sfL https://get.k3s.io | sh -
@@ -86,7 +90,8 @@ COPY 70-dhcpcd.conf /usr/lib/sysusers.d/70-dhcpcd.conf
 
 # Clean image
 RUN dnf clean all
-RUN systemd-tmpfiles --clean
+RUN systemd-sysusers
+RUN systemd-tmpfiles --clean || true
 RUN rm -rf /run/cloud-init /run/cockpit /run/dnf /run/selinux-policy /run/setroubleshoot
 RUN find /var/cache /var/lib/dnf /var/lib/rhsm /var/log /var/roothome/buildinfo -type f -print -delete 2>/dev/null || true
 RUN bootc container lint --no-truncate

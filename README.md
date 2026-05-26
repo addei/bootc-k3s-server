@@ -55,3 +55,27 @@ podman push --all localhost/k3s-server:$(date +%Y%m%d)
 - All configuration values from `k3s.env` are passed as build arguments and set as environment variables in the image.
 - The K3S token is handled securely as a secret.
 - You can automate the build-arg part with a shell loop if you add/remove variables often.
+
+### 5. Using the build script
+
+The `script.sh` automates the full build and push workflow. It expects the `REGISTRY` environment variable to be set. If not set, it will prompt for the registry address.
+
+```bash
+# Option 1: Set registry beforehand
+export REGISTRY=<registry-url>
+./script.sh
+
+# or
+
+REGISTRY=<registry-url> ./script.sh
+
+
+# Option 2: Let the script ask
+./script.sh
+```
+
+The script will:
+1. Log in to the registry
+2. Source `k3s.env` for build arguments
+3. Build the image for `linux/amd64`
+4. Tag and push to `$REGISTRY/bootc-images/k3s-server:<date>` and `:latest`
