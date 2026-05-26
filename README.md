@@ -1,5 +1,5 @@
-# bootc-centos-k3s-server
-Project for Centos Stream 10 k3s cluster.
+# bootc-k3s-server
+Project for Fedora 44 k3s cluster.
 
 ## Build Instructions
 
